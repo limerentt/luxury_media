@@ -1,237 +1,207 @@
-# Luxury Account in One Click
+# 🌟 Luxury Account - AI-Powered Luxury Media Platform
 
-> Production-ready platform for luxury account creation with AI-powered media generation
+A sophisticated, production-ready platform for luxury brands to create AI-powered media content with elegant design and premium user experience.
 
-## 🏗️ Architecture
+![Status](https://img.shields.io/badge/Status-Production_Ready-brightgreen)
+![Next.js](https://img.shields.io/badge/Next.js-15-black)
+![FastAPI](https://img.shields.io/badge/FastAPI-Python_3.12-blue)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)
 
-```mermaid
-graph TB
-    subgraph "Frontend Layer"
-        A[Next.js 14 Landing] --> B[Dashboard/App]
-        B --> C[Auth (next-auth)]
-    end
-    
-    subgraph "Backend Layer"
-        D[FastAPI Backend] --> E[ClickHouse DB]
-        D --> F[RabbitMQ Queue]
-        D --> G[MinIO Storage]
-    end
-    
-    subgraph "Processing Layer"
-        H[Python Worker] --> F
-        H --> E
-        H --> G
-    end
-    
-    subgraph "External Services"
-        I[Google OAuth]
-        J[Stripe Payments]
-        K[CDN]
-    end
-    
-    A --> D
-    B --> D
-    C --> I
-    B --> J
-    G --> K
-    
-    style A fill:#e1f5fe
-    style B fill:#e1f5fe
-    style D fill:#f3e5f5
-    style H fill:#fff3e0
-    style E fill:#e8f5e8
-```
+## ✨ Features
 
-## 🚀 Tech Stack
+### 🎨 Frontend (Next.js 15)
+- **Luxury Design System** with gold gradients and premium aesthetics
+- **Responsive Navigation** with smooth animations using Framer Motion
+- **Hero Section** with interactive elements and scrolling indicators
+- **TypeScript** for type safety and better developer experience
+- **Tailwind CSS** with custom luxury theme configuration
+- **Mobile-First Design** with responsive breakpoints
 
-### Frontend
-- **Next.js 14** with App Router & TypeScript
-- **Tailwind CSS v3** + shadcn/ui components
-- **Framer Motion** for animations
-- **next-intl** for i18n (en/ru)
-- **next-auth** for authentication
-
-### Backend
-- **FastAPI** (Python 3.12) with async support
-- **ClickHouse 24.6** for analytics & storage
-- **RabbitMQ** for message queuing
+### 🚀 Backend (FastAPI)
+- **High-Performance API** built with Python 3.12 and FastAPI
+- **ClickHouse Integration** for analytics and data storage
+- **RabbitMQ** for asynchronous message queuing
 - **MinIO** for S3-compatible object storage
+- **Comprehensive Testing** with pytest and coverage
 
-### Infrastructure
-- **Docker Compose** for development
-- **Helm Charts** for Kubernetes deployment
-- **GitHub Actions** for CI/CD
-- **Playwright** for E2E testing
+### 🛠️ Infrastructure
+- **Docker Containerization** for all services
+- **Kubernetes Helm Charts** for cloud deployment
+- **GitHub Actions CI/CD** pipeline with automated testing
+- **Monorepo Structure** managed with Turborepo
+- **Production-Ready** configuration for staging and production
 
-## 📋 Features
-
-- ✅ **One-Click Registration** with Google OAuth
-- ✅ **AI Media Generation** (stub implementation)
-- ✅ **Stripe Payment Integration**
-- ✅ **Real-time Dashboard**
-- ✅ **Multi-language Support** (EN/RU)
-- ✅ **Mobile-First Design** (Lighthouse ≥95)
-
-## 🛠️ Development Setup
+## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 18+
-- pnpm 8+
-- Docker & Docker Compose
-- Git
+- Node.js 18+ and npm
+- Python 3.12+
+- Docker and Docker Compose
 
-### Quick Start
-
+### 1. Clone & Setup
 ```bash
-# Clone repository
-git clone <repository-url>
-cd luxury-account
-
-# Install dependencies
-pnpm install
-
-# Start development environment
-docker compose up -d
-
-# Run development server
-pnpm dev
+git clone git@github.com:limerentt/luxury_media.git
+cd luxury_media
+npm install
 ```
 
-### Available Scripts
-
+### 2. Start Frontend
 ```bash
-# Development
-pnpm dev              # Start Next.js dev server
-pnpm turbo dev        # Start all services in dev mode
+cd apps/web
+npm run dev
+```
+🌐 **Frontend:** http://localhost:3000
 
-# Building
-pnpm build            # Build all packages
-pnpm turbo build      # Build with Turbo
+### 3. Start Backend (Optional)
+```bash
+cd apps/api
+pip install -r requirements.txt
+python -m uvicorn app.main:app --reload --port 8000
+```
+🔗 **API:** http://localhost:8000
 
-# Testing
-pnpm test             # Run unit tests
-pnpm test:e2e         # Run Playwright E2E tests
-pnpm lint             # Run ESLint
-pnpm type-check       # TypeScript checking
-
-# Database
-pnpm db:migrate       # Run ClickHouse migrations
-pnpm db:seed          # Seed development data
+### 4. Start Worker Service (Optional)
+```bash
+cd apps/worker  
+pip install -r requirements.txt
+python main.py
 ```
 
-## 🗄️ Database Schema
+## 📁 Project Structure
 
-### Tables
-- **users** - User accounts and profiles
-- **media_requests** - AI generation requests
-- **media_assets** - Generated media files
-- **payments** - Stripe payment records
+```
+luxury_media/
+├── 🎨 apps/web/          # Next.js Frontend
+│   ├── src/app/          # App Router pages
+│   ├── src/components/   # Reusable UI components
+│   ├── src/lib/          # Utilities and helpers
+│   └── public/           # Static assets
+├── 🔧 apps/api/          # FastAPI Backend
+│   ├── app/              # Application code
+│   ├── tests/            # API tests
+│   └── requirements.txt  # Python dependencies
+├── ⚡ apps/worker/       # Python Worker Service
+│   ├── worker/           # Worker modules
+│   └── tests/            # Worker tests
+├── 🐳 docker-compose.yml # Development environment
+├── ☸️  helm/             # Kubernetes deployment
+├── 🔄 .github/workflows/ # CI/CD pipelines
+└── 📋 turbo.json         # Monorepo configuration
+```
 
-### Partitioning
-- Monthly partitioning by `created_at`
-- Optimized for time-series analytics
+## 🎯 Key Components
 
-## 🔧 Environment Variables
+### Frontend Components
+- **Navigation** - Responsive header with luxury branding
+- **HeroSection** - Animated landing section with call-to-action
+- **FeaturesSection** - Product capabilities showcase
+- **PricingSection** - Subscription plans display
 
+### Backend Services
+- **Health API** - Service monitoring endpoints
+- **Media Requests** - AI content generation API
+- **User Management** - Authentication and profiles
+- **Payment Processing** - Stripe integration (configured)
+
+## 🔧 Development
+
+### Frontend Development
 ```bash
-# Database
-CLICKHOUSE_URL=http://localhost:8123
-CLICKHOUSE_DATABASE=luxury_account
+cd apps/web
+npm run dev          # Start development server
+npm run build        # Build for production
+npm run lint         # Run ESLint
+```
 
-# Authentication
-NEXTAUTH_SECRET=your-secret-here
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
+### Backend Development
+```bash
+cd apps/api
+python -m pytest    # Run tests
+python -m uvicorn app.main:app --reload  # Start dev server
+```
 
-# Payments
-STRIPE_SECRET_KEY=sk_test_...
-STRIPE_PUBLISHABLE_KEY=pk_test_...
-
-# Storage
-MINIO_ENDPOINT=localhost:9000
-MINIO_ACCESS_KEY=minioadmin
-MINIO_SECRET_KEY=minioadmin
-
-# Queue
-RABBITMQ_URL=amqp://localhost:5672
+### Full Stack Development
+```bash
+# From project root
+npm run dev          # Start all services via Turbo
 ```
 
 ## 🚀 Deployment
 
-### Development
+### Docker Compose (Local)
 ```bash
-docker compose up --build
+docker-compose up --build
 ```
 
-### Production (Kubernetes)
+### Kubernetes (Production)
 ```bash
-helm install luxury-account ./helm/luxury-account
+helm install luxury-account ./helm/luxury-account \
+  --namespace production \
+  --values ./helm/luxury-account/values-production.yaml
 ```
-
-### CI/CD Pipeline
-1. **Lint & Test** - ESLint, TypeScript, Jest
-2. **Build** - Docker images for all services
-3. **Deploy** - Helm upgrade to staging/production
-
-## 📊 Performance
-
-- **Lighthouse Score**: ≥95 (Mobile)
-- **Core Web Vitals**: All green
-- **Test Coverage**: ≥80%
-- **Build Time**: <2 minutes
 
 ## 🧪 Testing
 
-### Unit Tests
+### Frontend Tests
 ```bash
-pnpm test
+cd apps/web
+npm run test         # Unit tests
+npm run test:e2e     # End-to-end tests with Playwright
 ```
 
-### E2E Tests
+### Backend Tests
 ```bash
-pnpm test:e2e
+cd apps/api
+python -m pytest tests/ --cov=app
 ```
 
-### Test Scenarios
-- User registration flow
-- Media generation request
-- Payment processing
-- Dashboard interactions
+## 📝 Configuration
 
-## 📝 API Documentation
+### Environment Variables
+Create `.env.local` in `apps/web/`:
+```env
+NEXTAUTH_SECRET=your-secret-key
+NEXTAUTH_URL=http://localhost:3000
+STRIPE_PUBLIC_KEY=pk_test_...
+STRIPE_SECRET_KEY=sk_test_...
+```
 
-API documentation is available at `/api/docs` when running the FastAPI backend.
-
-### Key Endpoints
-- `POST /api/auth/register` - User registration
-- `POST /api/media/generate` - Request media generation
-- `GET /api/media/{id}` - Get media status
-- `POST /api/payments/checkout` - Create payment session
-
-## 🌍 Internationalization
-
-Supported languages:
-- **English** (default)
-- **Russian**
-
-Language files located in `messages/` directory.
+Create `.env` in `apps/api/`:
+```env
+DATABASE_URL=clickhouse://localhost:9000/luxury
+RABBITMQ_URL=amqp://localhost:5672
+MINIO_ENDPOINT=localhost:9000
+```
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Commit changes: `git commit -m 'Add amazing feature'`
+4. Push to branch: `git push origin feature/amazing-feature`
+5. Open a Pull Request
 
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🆘 Support
+## 🏆 Tech Stack
 
-For support, email support@luxury-account.com or create an issue in this repository.
+| Frontend | Backend | Infrastructure |
+|----------|---------|----------------|
+| Next.js 15 | FastAPI | Docker |
+| TypeScript | Python 3.12 | Kubernetes |
+| Tailwind CSS | ClickHouse | GitHub Actions |
+| Framer Motion | RabbitMQ | Helm Charts |
+| shadcn/ui | MinIO | Turborepo |
+
+## 📞 Support
+
+For support and questions:
+- 📧 Email: support@luxuryaccount.ai
+- 🐛 Issues: [GitHub Issues](https://github.com/limerentt/luxury_media/issues)
+- 💬 Discussions: [GitHub Discussions](https://github.com/limerentt/luxury_media/discussions)
 
 ---
 
-**Built with ❤️ by the Luxury Account Team**
+**Built with ❤️ for luxury brands worldwide** ✨
