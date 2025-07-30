@@ -1,0 +1,86 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# 🏗️ MULTI-STAGE DOCKERFILE - LUXURY ACCOUNT WORKER
+# ═══════════════════════════════════════════════════════════════════════════
+
+# ───────────────────────────────────────────────────────────────────────────
+# 📦 BASE STAGE - Python Runtime
+# ───────────────────────────────────────────────────────────────────────────
+FROM python:3.12-slim-bookworm AS base
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    DEBIAN_FRONTEND=noninteractive
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    netcat-openbsd \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Create non-root user
+RUN groupadd -r worker && useradd -r -g worker -u 1001 worker
+
+# ───────────────────────────────────────────────────────────────────────────
+# 🔧 DEPENDENCIES STAGE - Install Python packages
+# ───────────────────────────────────────────────────────────────────────────
+FROM base AS dependencies
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements first for better caching
+COPY apps/worker/requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# ───────────────────────────────────────────────────────────────────────────
+# 🚀 PRODUCTION STAGE - Final image
+# ───────────────────────────────────────────────────────────────────────────
+FROM base AS production
+
+# Copy installed packages from dependencies stage
+COPY --from=dependencies /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=dependencies /usr/local/bin /usr/local/bin
+
+# Set working directory
+WORKDIR /app
+
+# Copy application code
+COPY apps/worker/ .
+
+# Create necessary directories
+RUN mkdir -p /app/data /tmp && \
+    chown -R worker:worker /app /tmp
+
+# Switch to non-root user
+USER worker
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD python -c "import sys; sys.exit(0)" || exit 1
+
+# Set default command
+CMD ["python", "-m", "worker.main"]
+
+# ───────────────────────────────────────────────────────────────────────────
+# 🏷️ METADATA
+# ───────────────────────────────────────────────────────────────────────────
+LABEL maintainer="Luxury Account Team <devops@luxury-account.com>" \
+      version="1.0.0" \
+      description="Luxury Account Worker Service - AI Media Generation" \
+      org.opencontainers.image.title="luxury-account-worker" \
+      org.opencontainers.image.description="Worker service for processing media generation requests" \
+      org.opencontainers.image.vendor="Luxury Account" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.source="https://github.com/luxury-account/luxury-account" 

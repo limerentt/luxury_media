@@ -1,0 +1,105 @@
+{
+  "navigation": {
+    "home": "Home",
+    "features": "Features",
+    "pricing": "Pricing",
+    "about": "About",
+    "contact": "Contact",
+    "dashboard": "Dashboard",
+    "signIn": "Sign In",
+    "signOut": "Sign Out",
+    "getStarted": "Get Started"
+  },
+  "hero": {
+    "title": "Create Your Luxury Account",
+    "subtitle": "in One Click",
+    "description": "Transform your business with AI-powered media generation. Create stunning visuals, videos, and content that captivates your luxury audience.",
+    "cta": "Start Creating Now",
+    "watchDemo": "Watch Demo"
+  },
+  "features": {
+    "title": "Powerful Features",
+    "subtitle": "Everything you need to create premium content",
+    "aiGeneration": {
+      "title": "AI Media Generation",
+      "description": "Generate high-quality images, videos, and audio content using advanced AI technology tailored for luxury brands."
+    },
+    "instantResults": {
+      "title": "Instant Results",
+      "description": "Get your media assets in seconds, not hours. Our optimized pipeline ensures rapid content delivery."
+    },
+    "premiumQuality": {
+      "title": "Premium Quality",
+      "description": "Every piece of content is crafted to meet luxury standards with superior resolution and attention to detail."
+    },
+    "globalAccess": {
+      "title": "Global Access",
+      "description": "Access your content from anywhere in the world with our cloud-based platform and CDN distribution."
+    },
+    "smartIntegration": {
+      "title": "Smart Integration",
+      "description": "Seamlessly integrate with your existing workflow using our comprehensive API and webhook system."
+    },
+    "analytics": {
+      "title": "Advanced Analytics",
+      "description": "Track performance, usage patterns, and ROI with detailed analytics and reporting tools."
+    }
+  },
+  "testimonials": {
+    "title": "What Our Clients Say",
+    "subtitle": "Trusted by luxury brands worldwide",
+    "client1": {
+      "name": "Alexandra Chen",
+      "role": "Creative Director",
+      "company": "Luxe Studios",
+      "content": "This platform has revolutionized our content creation process. The AI-generated visuals are indistinguishable from professional photography."
+    },
+    "client2": {
+      "name": "Marcus Rodriguez",
+      "role": "Brand Manager",
+      "company": "Elite Fashion",
+      "content": "The speed and quality are unmatched. We've reduced our content production time by 80% while maintaining premium standards."
+    },
+    "client3": {
+      "name": "Sophia Williams",
+      "role": "Marketing Director",
+      "company": "Premium Lifestyle",
+      "content": "Outstanding results every time. Our engagement rates have increased by 150% since using this AI-powered platform."
+    }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "createRequest": "Create New Request",
+    "myRequests": "My Requests",
+    "recentActivity": "Recent Activity",
+    "stats": {
+      "totalRequests": "Total Requests",
+      "completedRequests": "Completed",
+      "pendingRequests": "Pending",
+      "mediaAssets": "Media Assets"
+    }
+  },
+  "auth": {
+    "signIn": "Sign In",
+    "signingIn": "Signing in...",
+    "signOut": "Sign Out"
+  },
+  "userMenu": {
+    "profile": "Profile",
+    "billing": "Billing",
+    "settings": "Settings",
+    "signOut": "Sign Out"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "view": "View",
+    "download": "Download",
+    "share": "Share"
+  }
+} 

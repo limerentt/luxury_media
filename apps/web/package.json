@@ -1,0 +1,42 @@
+{
+  "name": "web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@auth/core": "^0.40.0",
+    "@radix-ui/react-icons": "^1.3.2",
+    "@radix-ui/react-slot": "^1.2.3",
+    "@stripe/stripe-js": "^7.7.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.23.11",
+    "lucide-react": "^0.534.0",
+    "next": "15.4.4",
+    "next-auth": "^5.0.0-beta.29",
+    "next-intl": "^4.3.4",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "stripe": "^18.3.0",
+    "tailwind-merge": "^3.3.1",
+    "zod": "^4.0.13"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@faker-js/faker": "^9.9.0",
+    "@playwright/test": "^1.54.1",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20.19.9",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.4.4",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

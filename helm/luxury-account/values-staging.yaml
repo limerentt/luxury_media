@@ -1,0 +1,198 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# 🎭 STAGING ENVIRONMENT CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════════════
+
+global:
+  environment: staging
+  registry: ghcr.io
+  repository: luxury-account/luxury-account
+  imagePullPolicy: Always
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🎨 FRONTEND OVERRIDES
+# ═══════════════════════════════════════════════════════════════════════════
+frontend:
+  replicaCount: 1
+  
+  image:
+    tag: develop
+  
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+  
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+  
+  env:
+    NODE_ENV: staging
+    NEXTAUTH_URL: https://staging.luxury-account.dev
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🐍 API OVERRIDES
+# ═══════════════════════════════════════════════════════════════════════════
+api:
+  replicaCount: 1
+  
+  image:
+    tag: develop
+  
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 5
+  
+  env:
+    ENVIRONMENT: staging
+    LOG_LEVEL: DEBUG
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ⚙️ WORKER OVERRIDES
+# ═══════════════════════════════════════════════════════════════════════════
+worker:
+  replicaCount: 1
+  
+  image:
+    tag: develop
+  
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+  
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+  
+  env:
+    ENVIRONMENT: staging
+    LOG_LEVEL: DEBUG
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🌐 INGRESS CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════════════
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-staging
+    nginx.ingress.kubernetes.io/rate-limit: "50"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+  
+  hosts:
+    - host: staging.luxury-account.dev
+      paths:
+        - path: /api
+          pathType: Prefix
+          service:
+            name: luxury-account-api
+            port: 8000
+        - path: /
+          pathType: Prefix
+          service:
+            name: luxury-account-frontend
+            port: 3000
+  
+  tls:
+    - secretName: luxury-account-staging-tls
+      hosts:
+        - staging.luxury-account.dev
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🗄️ DATABASE CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════════════
+clickhouse:
+  enabled: true
+  persistence:
+    enabled: true
+    size: 20Gi
+  
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+
+rabbitmq:
+  enabled: true
+  persistence:
+    enabled: true
+    size: 5Gi
+  
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+minio:
+  enabled: true
+  persistence:
+    enabled: true
+    size: 50Gi
+  
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 📊 MONITORING CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════════════
+monitoring:
+  enabled: true
+  
+  prometheus:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      interval: 60s
+  
+  grafana:
+    enabled: true
+  
+  jaeger:
+    enabled: false
+  
+  loki:
+    enabled: true
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🔒 SECURITY CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════════════
+networkPolicy:
+  enabled: true
+
+podDisruptionBudget:
+  enabled: false  # Disabled for single replicas
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🧪 TESTING CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════════════
+tests:
+  enabled: true 

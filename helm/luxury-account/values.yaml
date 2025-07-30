@@ -1,0 +1,448 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# 🏷️ GLOBAL CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════════════
+global:
+  environment: development
+  registry: ghcr.io
+  repository: luxury-account/luxury-account
+  imagePullPolicy: IfNotPresent
+  storageClass: ""
+  
+nameOverride: ""
+fullnameOverride: ""
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🎨 FRONTEND (Next.js)
+# ═══════════════════════════════════════════════════════════════════════════
+frontend:
+  enabled: true
+  
+  image:
+    repository: ghcr.io/luxury-account/luxury-account-frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  replicaCount: 2
+  
+  service:
+    type: ClusterIP
+    port: 3000
+    targetPort: 3000
+    annotations: {}
+  
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  
+  nodeSelector: {}
+  tolerations: []
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                    - luxury-account-frontend
+            topologyKey: kubernetes.io/hostname
+  
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 3000
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 3000
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+  
+  env:
+    NODE_ENV: production
+    NEXT_TELEMETRY_DISABLED: "1"
+    # Authentication
+    NEXTAUTH_URL: https://luxury-account.com
+    # External API endpoints will be added via secrets
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🐍 BACKEND API (FastAPI)
+# ═══════════════════════════════════════════════════════════════════════════
+api:
+  enabled: true
+  
+  image:
+    repository: ghcr.io/luxury-account/luxury-account-api
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  replicaCount: 3
+  
+  service:
+    type: ClusterIP
+    port: 8000
+    targetPort: 8000
+    annotations: {}
+  
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  
+  nodeSelector: {}
+  tolerations: []
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                    - luxury-account-api
+            topologyKey: kubernetes.io/hostname
+  
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 8000
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 8000
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+  
+  env:
+    ENVIRONMENT: production
+    LOG_LEVEL: INFO
+    # Database and external service configs will be added via secrets
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ⚙️ WORKER SERVICE
+# ═══════════════════════════════════════════════════════════════════════════
+worker:
+  enabled: true
+  
+  image:
+    repository: ghcr.io/luxury-account/luxury-account-worker
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  replicaCount: 2
+  
+  resources:
+    limits:
+      cpu: 4000m
+      memory: 4Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 85
+  
+  nodeSelector: {}
+  tolerations: []
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                    - luxury-account-worker
+            topologyKey: kubernetes.io/hostname
+  
+  livenessProbe:
+    exec:
+      command:
+        - python
+        - -c
+        - "import sys; sys.exit(0)"
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 3
+  
+  env:
+    ENVIRONMENT: production
+    LOG_LEVEL: INFO
+    # Queue and database configs will be added via secrets
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🌐 INGRESS CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════════════
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  
+  hosts:
+    - host: luxury-account.com
+      paths:
+        - path: /api
+          pathType: Prefix
+          service:
+            name: luxury-account-api
+            port: 8000
+        - path: /
+          pathType: Prefix
+          service:
+            name: luxury-account-frontend
+            port: 3000
+  
+  tls:
+    - secretName: luxury-account-tls
+      hosts:
+        - luxury-account.com
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🔐 SERVICE ACCOUNT & RBAC
+# ═══════════════════════════════════════════════════════════════════════════
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+rbac:
+  create: true
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🔒 POD SECURITY CONTEXT
+# ═══════════════════════════════════════════════════════════════════════════
+podSecurityContext:
+  fsGroup: 1001
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1001
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🗄️ CLICKHOUSE DATABASE
+# ═══════════════════════════════════════════════════════════════════════════
+clickhouse:
+  enabled: true
+  auth:
+    username: luxury_account
+    password: ""  # Set via secret
+    database: luxury_account
+  
+  persistence:
+    enabled: true
+    size: 100Gi
+    storageClass: ""
+  
+  resources:
+    limits:
+      cpu: 4000m
+      memory: 8Gi
+    requests:
+      cpu: 1000m
+      memory: 2Gi
+  
+  replicaCount: 1
+  
+  service:
+    type: ClusterIP
+    ports:
+      http: 8123
+      tcp: 9000
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🐰 RABBITMQ MESSAGE QUEUE
+# ═══════════════════════════════════════════════════════════════════════════
+rabbitmq:
+  enabled: true
+  auth:
+    username: luxury_account
+    password: ""  # Set via secret
+    erlangCookie: ""  # Set via secret
+  
+  persistence:
+    enabled: true
+    size: 20Gi
+    storageClass: ""
+  
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+  
+  replicaCount: 1
+  clustering:
+    enabled: false
+  
+  service:
+    type: ClusterIP
+    ports:
+      amqp: 5672
+      dist: 25672
+      manager: 15672
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 📦 MINIO OBJECT STORAGE
+# ═══════════════════════════════════════════════════════════════════════════
+minio:
+  enabled: true
+  auth:
+    rootUser: admin
+    rootPassword: ""  # Set via secret
+  
+  defaultBuckets: "media-assets"
+  
+  persistence:
+    enabled: true
+    size: 500Gi
+    storageClass: ""
+  
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+  
+  service:
+    type: ClusterIP
+    ports:
+      api: 9000
+      console: 9001
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 📊 MONITORING & OBSERVABILITY
+# ═══════════════════════════════════════════════════════════════════════════
+monitoring:
+  enabled: true
+  
+  prometheus:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+      scrapeTimeout: 10s
+  
+  grafana:
+    enabled: true
+    adminPassword: ""  # Set via secret
+  
+  jaeger:
+    enabled: false
+  
+  loki:
+    enabled: true
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🔒 SECRETS MANAGEMENT
+# ═══════════════════════════════════════════════════════════════════════════
+secrets:
+  create: true
+  annotations: {}
+  
+  # External Secrets Operator integration
+  externalSecrets:
+    enabled: false
+    secretStore:
+      provider: aws  # aws, azure, gcp, vault
+      region: us-east-1
+      
+# ═══════════════════════════════════════════════════════════════════════════
+# 🌐 NETWORKING & POLICIES
+# ═══════════════════════════════════════════════════════════════════════════
+networkPolicy:
+  enabled: true
+  ingress:
+    enabled: true
+  egress:
+    enabled: true
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+  # maxUnavailable: 1
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🧪 TESTING
+# ═══════════════════════════════════════════════════════════════════════════
+tests:
+  enabled: true
+  image:
+    repository: curlimages/curl
+    tag: latest
+  
+# ═══════════════════════════════════════════════════════════════════════════
+# 🏗️ INGRESS CONTROLLER & CERT MANAGER
+# ═══════════════════════════════════════════════════════════════════════════
+ingress-nginx:
+  enabled: false  # Usually managed separately
+  
+cert-manager:
+  enabled: false  # Usually managed separately
+  installCRDs: true 

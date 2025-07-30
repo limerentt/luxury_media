@@ -1,0 +1,329 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# 🏭 PRODUCTION ENVIRONMENT CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════════════
+
+global:
+  environment: production
+  registry: ghcr.io
+  repository: luxury-account/luxury-account
+  imagePullPolicy: IfNotPresent
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🎨 FRONTEND CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════════════
+frontend:
+  replicaCount: 3
+  
+  image:
+    tag: latest
+  
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  
+  env:
+    NODE_ENV: production
+    NEXTAUTH_URL: https://luxury-account.com
+  
+  nodeSelector:
+    node-type: frontend
+  
+  tolerations:
+    - key: "node-type"
+      operator: "Equal"
+      value: "frontend"
+      effect: "NoSchedule"
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🐍 API CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════════════
+api:
+  replicaCount: 5
+  
+  image:
+    tag: latest
+  
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 5
+    maxReplicas: 50
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  
+  env:
+    ENVIRONMENT: production
+    LOG_LEVEL: INFO
+  
+  nodeSelector:
+    node-type: api
+  
+  tolerations:
+    - key: "node-type"
+      operator: "Equal"
+      value: "api"
+      effect: "NoSchedule"
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ⚙️ WORKER CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════════════
+worker:
+  replicaCount: 3
+  
+  image:
+    tag: latest
+  
+  resources:
+    limits:
+      cpu: 4000m
+      memory: 4Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 85
+  
+  env:
+    ENVIRONMENT: production
+    LOG_LEVEL: INFO
+  
+  nodeSelector:
+    node-type: worker
+  
+  tolerations:
+    - key: "node-type"
+      operator: "Equal"
+      value: "worker"
+      effect: "NoSchedule"
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🌐 INGRESS CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════════════
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/rate-limit: "200"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "X-Frame-Options: SAMEORIGIN";
+      more_set_headers "X-Content-Type-Options: nosniff";
+      more_set_headers "X-XSS-Protection: 1; mode=block";
+      more_set_headers "Strict-Transport-Security: max-age=31536000; includeSubDomains";
+  
+  hosts:
+    - host: luxury-account.com
+      paths:
+        - path: /api
+          pathType: Prefix
+          service:
+            name: luxury-account-api
+            port: 8000
+        - path: /
+          pathType: Prefix
+          service:
+            name: luxury-account-frontend
+            port: 3000
+    - host: www.luxury-account.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service:
+            name: luxury-account-frontend  # Redirect handled by frontend
+            port: 3000
+  
+  tls:
+    - secretName: luxury-account-prod-tls
+      hosts:
+        - luxury-account.com
+        - www.luxury-account.com
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🗄️ DATABASE CONFIGURATION (PRODUCTION)
+# ═══════════════════════════════════════════════════════════════════════════
+clickhouse:
+  enabled: true
+  persistence:
+    enabled: true
+    size: 1Ti
+    storageClass: fast-ssd
+  
+  resources:
+    limits:
+      cpu: 8000m
+      memory: 16Gi
+    requests:
+      cpu: 2000m
+      memory: 4Gi
+  
+  replicaCount: 3  # ClickHouse cluster
+  
+  nodeSelector:
+    node-type: database
+  
+  tolerations:
+    - key: "node-type"
+      operator: "Equal"
+      value: "database"
+      effect: "NoSchedule"
+
+rabbitmq:
+  enabled: true
+  persistence:
+    enabled: true
+    size: 100Gi
+    storageClass: standard-ssd
+  
+  resources:
+    limits:
+      cpu: 4000m
+      memory: 4Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+  
+  replicaCount: 3
+  clustering:
+    enabled: true
+  
+  nodeSelector:
+    node-type: database
+  
+  tolerations:
+    - key: "node-type"
+      operator: "Equal"
+      value: "database"
+      effect: "NoSchedule"
+
+minio:
+  enabled: true
+  persistence:
+    enabled: true
+    size: 5Ti
+    storageClass: standard-ssd
+  
+  resources:
+    limits:
+      cpu: 4000m
+      memory: 4Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+  
+  replicaCount: 4  # MinIO distributed mode
+  
+  nodeSelector:
+    node-type: storage
+  
+  tolerations:
+    - key: "node-type"
+      operator: "Equal"
+      value: "storage"
+      effect: "NoSchedule"
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 📊 MONITORING CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════════════
+monitoring:
+  enabled: true
+  
+  prometheus:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      interval: 15s
+      scrapeTimeout: 10s
+  
+  grafana:
+    enabled: true
+  
+  jaeger:
+    enabled: true
+  
+  loki:
+    enabled: true
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🔒 SECURITY CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════════════
+networkPolicy:
+  enabled: true
+  ingress:
+    enabled: true
+  egress:
+    enabled: true
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+# Security context - production hardening
+podSecurityContext:
+  fsGroup: 1001
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  fsGroupChangePolicy: "OnRootMismatch"
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1001
+  seccompProfile:
+    type: RuntimeDefault
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🧪 TESTING CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════════════
+tests:
+  enabled: false  # Disabled in production
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 📈 PERFORMANCE TUNING
+# ═══════════════════════════════════════════════════════════════════════════
+# Storage classes for different performance requirements
+storageClasses:
+  fast-ssd: gp3-fast    # High IOPS for databases
+  standard-ssd: gp3      # Standard SSD for general use
+  
+# Resource quotas per namespace
+resourceQuota:
+  enabled: true
+  hard:
+    requests.cpu: "50"
+    requests.memory: "100Gi" 
+    limits.cpu: "100"
+    limits.memory: "200Gi"
+    persistentvolumeclaims: "20" 

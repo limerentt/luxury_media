@@ -1,0 +1,112 @@
+{{- if .Values.frontend.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "luxury-account.fullname" . }}-frontend-config
+  labels:
+    {{- include "luxury-account.frontend.labels" . | nindent 4 }}
+data:
+  # Next.js Configuration
+  NEXT_PUBLIC_APP_NAME: "Luxury Account"
+  NEXT_PUBLIC_APP_VERSION: {{ .Chart.AppVersion | quote }}
+  NEXT_PUBLIC_API_URL: {{ printf "https://%s/api" (index .Values.ingress.hosts 0).host | quote }}
+  NEXT_PUBLIC_ENVIRONMENT: {{ .Values.global.environment | quote }}
+  
+  # Feature Flags
+  NEXT_PUBLIC_ENABLE_ANALYTICS: "true"
+  NEXT_PUBLIC_ENABLE_MONITORING: {{ .Values.monitoring.enabled | quote }}
+  
+  # External Service URLs
+  NEXT_PUBLIC_SUPPORT_URL: "https://support.luxury-account.com"
+  NEXT_PUBLIC_DOCS_URL: "https://docs.luxury-account.com"
+{{- end }}
+
+{{- if .Values.api.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "luxury-account.fullname" . }}-api-config
+  labels:
+    {{- include "luxury-account.api.labels" . | nindent 4 }}
+data:
+  # Application Configuration
+  APP_NAME: "Luxury Account API"
+  APP_VERSION: {{ .Chart.AppVersion | quote }}
+  
+  # Database Configuration
+  CLICKHOUSE_DATABASE: {{ .Values.clickhouse.auth.database | quote }}
+  CLICKHOUSE_HOST: {{ printf "%s-clickhouse" (include "luxury-account.fullname" .) | quote }}
+  CLICKHOUSE_PORT: {{ .Values.clickhouse.service.ports.http | quote }}
+  
+  # Queue Configuration
+  RABBITMQ_HOST: {{ printf "%s-rabbitmq" (include "luxury-account.fullname" .) | quote }}
+  RABBITMQ_PORT: {{ .Values.rabbitmq.service.ports.amqp | quote }}
+  RABBITMQ_VHOST: "/"
+  RABBITMQ_EXCHANGE: "media_processing"
+  RABBITMQ_QUEUE: "media_generation"
+  
+  # Storage Configuration
+  MINIO_BUCKET: "media-assets"
+  MINIO_REGION: "us-east-1"
+  
+  # Security Configuration
+  CORS_ORIGINS: {{ printf "https://%s" (index .Values.ingress.hosts 0).host | quote }}
+  ALLOWED_HOSTS: {{ (index .Values.ingress.hosts 0).host | quote }}
+  
+  # Rate Limiting
+  RATE_LIMIT_REQUESTS: "100"
+  RATE_LIMIT_WINDOW: "60"
+  
+  # Monitoring
+  ENABLE_METRICS: {{ .Values.monitoring.enabled | quote }}
+  METRICS_PORT: "9090"
+{{- end }}
+
+{{- if .Values.worker.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "luxury-account.fullname" . }}-worker-config
+  labels:
+    {{- include "luxury-account.worker.labels" . | nindent 4 }}
+data:
+  # Worker Configuration
+  WORKER_NAME: "luxury-account-worker"
+  WORKER_VERSION: {{ .Chart.AppVersion | quote }}
+  WORKER_CONCURRENCY: "4"
+  WORKER_TIMEOUT: "300"
+  
+  # Queue Configuration
+  RABBITMQ_HOST: {{ printf "%s-rabbitmq" (include "luxury-account.fullname" .) | quote }}
+  RABBITMQ_PORT: {{ .Values.rabbitmq.service.ports.amqp | quote }}
+  RABBITMQ_VHOST: "/"
+  RABBITMQ_EXCHANGE: "media_processing"
+  RABBITMQ_QUEUE: "media_generation"
+  RABBITMQ_RETRY_QUEUE: "media_generation_retry"
+  RABBITMQ_DLQ: "media_generation_failed"
+  
+  # Database Configuration
+  CLICKHOUSE_DATABASE: {{ .Values.clickhouse.auth.database | quote }}
+  CLICKHOUSE_HOST: {{ printf "%s-clickhouse" (include "luxury-account.fullname" .) | quote }}
+  CLICKHOUSE_PORT: {{ .Values.clickhouse.service.ports.http | quote }}
+  
+  # Storage Configuration
+  MINIO_BUCKET: "media-assets"
+  MINIO_REGION: "us-east-1"
+  
+  # Processing Configuration
+  MAX_RETRIES: "3"
+  RETRY_DELAY: "60"
+  MEDIA_TIMEOUT: "600"
+  
+  # AI Service Configuration (stubs for now)
+  AI_SERVICE_URL: "http://ai-service:8080"
+  AI_SERVICE_TIMEOUT: "300"
+  
+  # Monitoring
+  ENABLE_METRICS: {{ .Values.monitoring.enabled | quote }}
+  METRICS_PORT: "9091"
+{{- end }} 

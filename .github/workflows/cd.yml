@@ -1,0 +1,488 @@
+name: 🚀 CD Pipeline
+
+on:
+  workflow_run:
+    workflows: ["🚀 CI Pipeline"]
+    types: [completed]
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      version:
+        description: 'Version/Tag to deploy'
+        required: false
+        default: 'latest'
+        type: string
+      force_deploy:
+        description: 'Force deployment (skip checks)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  HELM_VERSION: '3.13.0'
+  KUBECTL_VERSION: '1.28.0'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.environment || 'auto' }}
+  cancel-in-progress: false
+
+jobs:
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 🎯 DETERMINE DEPLOYMENT
+  # ═══════════════════════════════════════════════════════════════════════════
+  determine-deployment:
+    name: 🎯 Determine Deployment
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch'
+    outputs:
+      environment: ${{ steps.deployment.outputs.environment }}
+      version: ${{ steps.deployment.outputs.version }}
+      should-deploy: ${{ steps.deployment.outputs.should-deploy }}
+      services-to-deploy: ${{ steps.deployment.outputs.services }}
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🎯 Determine Deployment Strategy
+        id: deployment
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
+            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+            echo "should-deploy=true" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "environment=production" >> $GITHUB_OUTPUT
+            echo "version=latest" >> $GITHUB_OUTPUT
+            echo "should-deploy=true" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+            echo "environment=staging" >> $GITHUB_OUTPUT
+            echo "version=develop" >> $GITHUB_OUTPUT
+            echo "should-deploy=true" >> $GITHUB_OUTPUT
+          else
+            echo "should-deploy=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # Determine which services to deploy based on changes
+          SERVICES=("frontend" "api" "worker")
+          SERVICES_JSON=$(printf '%s\n' "${SERVICES[@]}" | jq -R . | jq -s .)
+          echo "services=$SERVICES_JSON" >> $GITHUB_OUTPUT
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 🐋 BUILD & PUSH DOCKER IMAGES
+  # ═══════════════════════════════════════════════════════════════════════════
+  build-and-push:
+    name: 🐋 Build & Push Images
+    runs-on: ubuntu-latest
+    needs: determine-deployment
+    if: needs.determine-deployment.outputs.should-deploy == 'true'
+    strategy:
+      matrix:
+        service: ${{ fromJson(needs.determine-deployment.outputs.services-to-deploy) }}
+        include:
+          - service: frontend
+            dockerfile: Dockerfile.front
+            context: apps/web
+          - service: api
+            dockerfile: Dockerfile.api
+            context: apps/api
+          - service: worker
+            dockerfile: Dockerfile.worker
+            context: apps/worker
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🏷️ Extract Metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.service }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=raw,value=${{ needs.determine-deployment.outputs.version }}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: 🔐 Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🔑 Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🏗️ Build and Push Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+      - name: 🔍 Scan Image for Vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.service }}:${{ needs.determine-deployment.outputs.version }}
+          format: 'sarif'
+          output: 'trivy-${{ matrix.service }}.sarif'
+
+      - name: 📊 Upload Scan Results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-${{ matrix.service }}.sarif'
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 🎭 STAGING DEPLOYMENT
+  # ═══════════════════════════════════════════════════════════════════════════
+  deploy-staging:
+    name: 🎭 Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [determine-deployment, build-and-push]
+    if: needs.determine-deployment.outputs.environment == 'staging'
+    environment:
+      name: staging
+      url: https://staging.luxury-account.dev
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: ${{ env.KUBECTL_VERSION }}
+
+      - name: ⚙️ Setup Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: 🔑 Setup Kubernetes Config
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.STAGING_KUBECONFIG }}" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: 🚀 Deploy with Helm
+        run: |
+          helm upgrade --install luxury-account-staging ./helm/luxury-account \
+            --namespace luxury-account-staging \
+            --create-namespace \
+            --values ./helm/luxury-account/values-staging.yaml \
+            --set image.tag=${{ needs.determine-deployment.outputs.version }} \
+            --set global.environment=staging \
+            --set ingress.hosts[0].host=staging.luxury-account.dev \
+            --wait \
+            --timeout=10m
+
+      - name: 🔍 Verify Deployment
+        run: |
+          kubectl rollout status deployment/luxury-account-frontend -n luxury-account-staging --timeout=600s
+          kubectl rollout status deployment/luxury-account-api -n luxury-account-staging --timeout=600s
+          kubectl rollout status deployment/luxury-account-worker -n luxury-account-staging --timeout=600s
+
+      - name: 🩺 Health Check
+        run: |
+          sleep 30
+          curl -f https://staging.luxury-account.dev/health || exit 1
+          echo "✅ Staging deployment healthy"
+
+      - name: 🧪 Run Smoke Tests
+        run: |
+          kubectl run smoke-test --rm -i --restart=Never \
+            --image=curlimages/curl:latest \
+            --namespace=luxury-account-staging \
+            -- sh -c '
+              curl -f https://staging.luxury-account.dev/health &&
+              curl -f https://staging.luxury-account.dev/api/health &&
+              echo "✅ All smoke tests passed"
+            '
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 🏭 PRODUCTION DEPLOYMENT (with approval)
+  # ═══════════════════════════════════════════════════════════════════════════
+  deploy-production:
+    name: 🏭 Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [determine-deployment, build-and-push]
+    if: needs.determine-deployment.outputs.environment == 'production'
+    environment:
+      name: production
+      url: https://luxury-account.com
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: ${{ env.KUBECTL_VERSION }}
+
+      - name: ⚙️ Setup Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: 🔑 Setup Kubernetes Config
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.PRODUCTION_KUBECONFIG }}" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: 💾 Backup Current Release
+        run: |
+          kubectl get deployment luxury-account-frontend -n luxury-account-production -o yaml > backup-frontend.yaml || true
+          kubectl get deployment luxury-account-api -n luxury-account-production -o yaml > backup-api.yaml || true
+          kubectl get deployment luxury-account-worker -n luxury-account-production -o yaml > backup-worker.yaml || true
+
+      - name: 🚀 Deploy with Helm (Blue-Green)
+        run: |
+          # Deploy to green environment first
+          helm upgrade --install luxury-account-green ./helm/luxury-account \
+            --namespace luxury-account-production \
+            --create-namespace \
+            --values ./helm/luxury-account/values-production.yaml \
+            --set image.tag=${{ needs.determine-deployment.outputs.version }} \
+            --set global.environment=production \
+            --set nameOverride=luxury-account-green \
+            --set ingress.hosts[0].host=green.luxury-account.com \
+            --wait \
+            --timeout=10m
+
+      - name: 🔍 Verify Green Deployment
+        run: |
+          kubectl rollout status deployment/luxury-account-green-frontend -n luxury-account-production --timeout=600s
+          kubectl rollout status deployment/luxury-account-green-api -n luxury-account-production --timeout=600s
+          kubectl rollout status deployment/luxury-account-green-worker -n luxury-account-production --timeout=600s
+
+      - name: 🩺 Green Environment Health Check
+        run: |
+          sleep 60
+          for i in {1..10}; do
+            if curl -f https://green.luxury-account.com/health; then
+              echo "✅ Green environment is healthy"
+              break
+            fi
+            echo "⏳ Waiting for green environment... (attempt $i/10)"
+            sleep 30
+          done
+
+      - name: 🧪 Run Production Smoke Tests
+        run: |
+          kubectl run prod-smoke-test --rm -i --restart=Never \
+            --image=curlimages/curl:latest \
+            --namespace=luxury-account-production \
+            -- sh -c '
+              curl -f https://green.luxury-account.com/health &&
+              curl -f https://green.luxury-account.com/api/health &&
+              curl -f https://green.luxury-account.com/api/payments/create-checkout-session &&
+              echo "✅ All production smoke tests passed"
+            '
+
+      - name: 🔄 Switch Traffic to Green
+        run: |
+          # Update main service to point to green deployment
+          kubectl patch service luxury-account-frontend -n luxury-account-production \
+            -p '{"spec":{"selector":{"app":"luxury-account-green-frontend"}}}'
+          kubectl patch service luxury-account-api -n luxury-account-production \
+            -p '{"spec":{"selector":{"app":"luxury-account-green-api"}}}'
+          
+          # Update ingress to point to production domain
+          helm upgrade luxury-account-green ./helm/luxury-account \
+            --namespace luxury-account-production \
+            --reuse-values \
+            --set ingress.hosts[0].host=luxury-account.com \
+            --wait
+
+      - name: ⏱️ Monitor for 5 minutes
+        run: |
+          echo "🔍 Monitoring production for 5 minutes..."
+          END_TIME=$(($(date +%s) + 300))
+          
+          while [ $(date +%s) -lt $END_TIME ]; do
+            if ! curl -f https://luxury-account.com/health; then
+              echo "❌ Health check failed during monitoring period"
+              exit 1
+            fi
+            echo "✅ Health check passed at $(date)"
+            sleep 60
+          done
+          
+          echo "✅ 5-minute monitoring period completed successfully"
+
+      - name: 🧹 Cleanup Blue Environment
+        run: |
+          # Clean up old blue deployment after successful monitoring
+          kubectl delete deployment luxury-account-frontend -n luxury-account-production --ignore-not-found=true
+          kubectl delete deployment luxury-account-api -n luxury-account-production --ignore-not-found=true
+          kubectl delete deployment luxury-account-worker -n luxury-account-production --ignore-not-found=true
+          
+          # Rename green to main
+          kubectl patch deployment luxury-account-green-frontend -n luxury-account-production \
+            -p '{"metadata":{"name":"luxury-account-frontend"}}'
+          kubectl patch deployment luxury-account-green-api -n luxury-account-production \
+            -p '{"metadata":{"name":"luxury-account-api"}}'
+          kubectl patch deployment luxury-account-green-worker -n luxury-account-production \
+            -p '{"metadata":{"name":"luxury-account-worker"}}'
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 🔄 ROLLBACK CAPABILITY
+  # ═══════════════════════════════════════════════════════════════════════════
+  rollback:
+    name: 🔄 Rollback
+    runs-on: ubuntu-latest
+    if: failure() && (needs.deploy-staging.result == 'failure' || needs.deploy-production.result == 'failure')
+    needs: [deploy-staging, deploy-production]
+    environment:
+      name: ${{ needs.determine-deployment.outputs.environment }}
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: ${{ env.KUBECTL_VERSION }}
+
+      - name: ⚙️ Setup Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: 🔑 Setup Kubernetes Config
+        run: |
+          mkdir -p ~/.kube
+          if [[ "${{ needs.determine-deployment.outputs.environment }}" == "production" ]]; then
+            echo "${{ secrets.PRODUCTION_KUBECONFIG }}" | base64 -d > ~/.kube/config
+          else
+            echo "${{ secrets.STAGING_KUBECONFIG }}" | base64 -d > ~/.kube/config
+          fi
+          chmod 600 ~/.kube/config
+
+      - name: 🔄 Rollback Deployment
+        run: |
+          NAMESPACE="luxury-account-${{ needs.determine-deployment.outputs.environment }}"
+          
+          echo "🔄 Rolling back to previous version..."
+          helm rollback luxury-account-${{ needs.determine-deployment.outputs.environment }} 0 \
+            --namespace $NAMESPACE \
+            --wait \
+            --timeout=10m
+
+      - name: 🔍 Verify Rollback
+        run: |
+          NAMESPACE="luxury-account-${{ needs.determine-deployment.outputs.environment }}"
+          
+          kubectl rollout status deployment/luxury-account-frontend -n $NAMESPACE --timeout=600s
+          kubectl rollout status deployment/luxury-account-api -n $NAMESPACE --timeout=600s
+          kubectl rollout status deployment/luxury-account-worker -n $NAMESPACE --timeout=600s
+
+      - name: 🩺 Post-Rollback Health Check
+        run: |
+          if [[ "${{ needs.determine-deployment.outputs.environment }}" == "production" ]]; then
+            URL="https://luxury-account.com"
+          else
+            URL="https://staging.luxury-account.dev"
+          fi
+          
+          sleep 30
+          curl -f $URL/health || exit 1
+          echo "✅ Rollback completed successfully"
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 📊 DEPLOYMENT METRICS
+  # ═══════════════════════════════════════════════════════════════════════════
+  deployment-metrics:
+    name: 📊 Deployment Metrics
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production]
+    if: always() && (needs.deploy-staging.result == 'success' || needs.deploy-production.result == 'success')
+    
+    steps:
+      - name: 📊 Calculate Deployment Time
+        run: |
+          START_TIME="${{ github.event.workflow_run.created_at }}"
+          END_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          
+          echo "Deployment started: $START_TIME"
+          echo "Deployment completed: $END_TIME"
+          
+          # Calculate duration (simplified)
+          echo "✅ Deployment metrics collected"
+
+      - name: 🔔 Notify Success
+        if: success()
+        run: |
+          echo "🎉 Deployment completed successfully!"
+          echo "Environment: ${{ needs.determine-deployment.outputs.environment }}"
+          echo "Version: ${{ needs.determine-deployment.outputs.version }}"
+          echo "Services: ${{ needs.determine-deployment.outputs.services-to-deploy }}"
+
+      - name: 📈 Update Deployment Status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: deployment } = await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: context.payload.deployment?.id || 0,
+              state: 'success',
+              environment: '${{ needs.determine-deployment.outputs.environment }}',
+              description: 'Deployment completed successfully'
+            });
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # ❌ DEPLOYMENT FAILURE NOTIFICATION
+  # ═══════════════════════════════════════════════════════════════════════════
+  deployment-failure:
+    name: ❌ Deployment Failure
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production, rollback]
+    if: always() && (needs.deploy-staging.result == 'failure' || needs.deploy-production.result == 'failure')
+    
+    steps:
+      - name: 🔔 Notify Failure
+        run: |
+          echo "❌ Deployment failed!"
+          echo "Environment: ${{ needs.determine-deployment.outputs.environment }}"
+          echo "Version: ${{ needs.determine-deployment.outputs.version }}"
+          
+          if [[ "${{ needs.rollback.result }}" == "success" ]]; then
+            echo "✅ Rollback completed successfully"
+          else
+            echo "❌ Rollback also failed - manual intervention required"
+          fi
+
+      - name: 📈 Update Deployment Status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: deployment } = await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: context.payload.deployment?.id || 0,
+              state: 'failure',
+              environment: '${{ needs.determine-deployment.outputs.environment }}',
+              description: 'Deployment failed - check logs for details'
+            }); 
