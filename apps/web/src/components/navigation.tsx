@@ -56,10 +56,10 @@ export default function Navigation() {
   }, [])
 
   const navigationItems = [
-    { href: '#features', label: 'Features' },
-    { href: '#pricing', label: 'Pricing' },
-    { href: '#about', label: 'About' },
-    { href: '#contact', label: 'Contact' }
+    { href: '/features', label: 'Features' },
+    { href: '/pricing', label: 'Pricing' },
+    { href: '/about', label: 'About' },
+    { href: '/contact', label: 'Contact' }
   ]
 
   return (
@@ -113,12 +113,16 @@ export default function Navigation() {
 
           {/* Desktop Actions */}
           <div className="hidden lg:flex items-center space-x-4">
-            <Button variant="ghost" className="text-foreground/80 hover:text-foreground">
-              Sign In
-            </Button>
-            <Button className="luxury-gradient text-white hover:opacity-90">
-              Get Started
-            </Button>
+            <Link href="/signin">
+              <Button variant="ghost" className="text-foreground/80 hover:text-foreground">
+                Sign In
+              </Button>
+            </Link>
+            <Link href="/get-started">
+              <Button className="luxury-gradient text-white hover:opacity-90">
+                Get Started
+              </Button>
+            </Link>
           </div>
 
           {/* Mobile menu button */}
@@ -166,15 +170,19 @@ export default function Navigation() {
                   </motion.div>
                 ))}
                 <div className="pt-4 space-y-2">
-                  <Button 
-                    variant="ghost" 
-                    className="w-full text-foreground/80 hover:text-foreground"
-                  >
-                    Sign In
-                  </Button>
-                  <Button className="w-full luxury-gradient text-white hover:opacity-90">
-                    Get Started
-                  </Button>
+                  <Link href="/signin">
+                    <Button 
+                      variant="ghost" 
+                      className="w-full text-foreground/80 hover:text-foreground"
+                    >
+                      Sign In
+                    </Button>
+                  </Link>
+                  <Link href="/get-started">
+                    <Button className="w-full luxury-gradient text-white hover:opacity-90">
+                      Get Started
+                    </Button>
+                  </Link>
                 </div>
               </div>
             </motion.div>

@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react'
+import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Sparkles, ArrowRight, Star, Zap } from 'lucide-react'
 
@@ -182,20 +183,24 @@ export default function HeroSection() {
             transition={{ duration: 0.6 }}
             className="flex flex-col sm:flex-row items-center justify-center gap-4"
           >
-            <Button 
-              size="lg"
-              className="luxury-gradient text-white font-semibold px-8 py-4 text-lg hover:opacity-90 transition-all"
-            >
-              Start Creating
-              <ArrowRight className="ml-2 w-5 h-5" />
-            </Button>
-            <Button 
-              variant="outline"
-              size="lg"
-              className="px-8 py-4 text-lg border-amber-500/20 hover:bg-amber-500/10"
-            >
-              Watch Demo
-            </Button>
+            <Link href="/get-started">
+              <Button 
+                size="lg"
+                className="luxury-gradient text-white font-semibold px-8 py-4 text-lg hover:opacity-90 transition-all"
+              >
+                Start Creating
+                <ArrowRight className="ml-2 w-5 h-5" />
+              </Button>
+            </Link>
+            <Link href="/contact">
+              <Button 
+                variant="outline"
+                size="lg"
+                className="px-8 py-4 text-lg border-amber-500/20 hover:bg-amber-500/10"
+              >
+                Watch Demo
+              </Button>
+            </Link>
           </motion.div>
 
           {/* Stats */}
