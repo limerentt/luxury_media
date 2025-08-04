@@ -326,4 +326,16 @@ class HealthCheck(BaseDBModel):
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     version: str
     database: str = Field(default="unknown")
-    uptime: Optional[float] = None 
+    uptime: Optional[float] = None
+
+
+class MediaGenerationMessage(BaseDBModel):
+    """Message for media generation request processing."""
+    request_id: str = Field(..., description="Media request ID")
+    user_id: str = Field(..., description="User ID")
+    media_type: MediaRequestType = Field(..., description="Type of media to generate")
+    prompt: str = Field(..., description="Generation prompt")
+    quality: MediaQuality = Field(default=MediaQuality.STANDARD, description="Media quality")
+    retry_count: int = Field(default=0, description="Current retry count")
+    max_retries: int = Field(default=3, description="Maximum retry attempts")
+    metadata: Optional[dict] = Field(default=None, description="Additional metadata") 

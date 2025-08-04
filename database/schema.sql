@@ -21,7 +21,7 @@ CREATE TABLE users (
     ) DEFAULT 'free',
     subscription_expires_at Nullable(DateTime),
     total_media_requests UInt32 DEFAULT 0,
-    total_payments_amount Decimal64(8, 2) DEFAULT 0,
+    total_payments_amount Decimal64(2) DEFAULT 0,
     last_login_at Nullable(DateTime),
     created_at DateTime DEFAULT now(),
     updated_at DateTime DEFAULT now()
@@ -66,7 +66,7 @@ CREATE TABLE media_requests (
     error_message Nullable(String),
     retry_count UInt8 DEFAULT 0,
     priority UInt8 DEFAULT 5, -- 1-10 scale, 10 = highest
-    estimated_cost Decimal64(4, 2) DEFAULT 0,
+    estimated_cost Decimal64(2) DEFAULT 0,
     created_at DateTime DEFAULT now(),
     updated_at DateTime DEFAULT now(),
     completed_at Nullable(DateTime)
@@ -121,7 +121,7 @@ CREATE TABLE payments (
     stripe_payment_intent_id String,
     stripe_session_id Nullable(String),
     stripe_customer_id Nullable(String),
-    amount Decimal64(8, 2), -- supports up to 999,999.99 in any currency
+    amount Decimal64(2), -- supports up to 999,999.99 in any currency
     currency FixedString(3), -- ISO 4217 currency codes (USD, EUR, etc.)
     status Enum8(
         'pending' = 1,
@@ -139,7 +139,7 @@ CREATE TABLE payments (
     receipt_url Nullable(String),
     failure_code Nullable(String),
     failure_message Nullable(String),
-    refunded_amount Decimal64(8, 2) DEFAULT 0,
+    refunded_amount Decimal64(2) DEFAULT 0,
     subscription_period_start Nullable(DateTime),
     subscription_period_end Nullable(DateTime),
     created_at DateTime DEFAULT now(),

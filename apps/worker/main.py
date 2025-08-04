@@ -28,13 +28,13 @@ from worker.core.logging import (
     configure_logging, log_worker_event, log_media_generation,
     log_database_operation, log_error
 )
-from worker.database.client import clickhouse_client
-from worker.database.models import (
+from app.database.client import clickhouse_client
+from app.database.models import (
     MediaGenerationMessage, MediaRequestUpdate, MediaRequestStatus,
     MediaAssetStatus
 )
 from worker.services.media_generator import media_generator
-from worker.services.queue_consumer import QueueConsumer, StubQueueConsumer
+from worker.services.queue_consumer import QueueConsumer, StubQueueConsumer, RabbitMQConsumer
 
 logger = structlog.get_logger(__name__)
 
@@ -51,9 +51,11 @@ class MediaWorker:
         
         # Initialize consumer based on mode
         if use_stub:
-            self.consumer = StubQueueConsumer(self.process_media_request)
+            self.consumer = StubQueueConsumer()
         else:
-            self.consumer = QueueConsumer(self.process_media_request)
+            import os
+            rabbitmq_url = os.getenv("RABBITMQ_URL", "amqp://guest:guest@rabbitmq:5672")
+            self.consumer = RabbitMQConsumer(rabbitmq_url)
     
     async def start(self) -> None:
         """Start the worker service."""

@@ -56,8 +56,22 @@ COPY --from=dependencies /usr/local/bin /usr/local/bin
 # Set working directory
 WORKDIR /app
 
-# Copy application code
-COPY apps/worker/ .
+# Copy requirements and main.py 
+COPY apps/worker/requirements.txt .
+COPY apps/worker/main.py .
+
+# Copy worker package preserving structure for internal imports
+COPY apps/worker/worker/ ./worker/
+
+# Copy entire API app structure for database compatibility
+COPY apps/api/app/ ./app/
+
+# Set PYTHONPATH so imports work correctly  
+ENV PYTHONPATH=/app:/app/worker
+
+# Create necessary __init__.py files
+RUN touch /app/__init__.py && \
+    touch /app/worker/__init__.py
 
 # Create necessary directories
 RUN mkdir -p /app/data /tmp && \
@@ -71,7 +85,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD python -c "import sys; sys.exit(0)" || exit 1
 
 # Set default command
-CMD ["python", "-m", "worker.main"]
+CMD ["sh", "-c", "cd /app && PYTHONPATH=/app:/app/worker python -u main.py"]
 
 # ───────────────────────────────────────────────────────────────────────────
 # 🏷️ METADATA

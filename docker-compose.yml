@@ -9,15 +9,14 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - NEXTAUTH_URL=http://localhost:3000
       - NEXTAUTH_SECRET=dev-secret-key
       - API_URL=http://backend:8000
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
     depends_on:
       - backend
-    volumes:
-      - ./apps/frontend:/app
-      - /app/node_modules
 
   # Backend - FastAPI
   backend:
@@ -37,8 +36,6 @@ services:
       - clickhouse
       - rabbitmq
       - minio
-    volumes:
-      - ./apps/backend:/app
 
   # Worker - Python
   worker:
@@ -56,15 +53,13 @@ services:
       - clickhouse
       - rabbitmq
       - minio
-    volumes:
-      - ./apps/worker:/app
 
   # ClickHouse Database
   clickhouse:
     image: clickhouse/clickhouse-server:24.6
     ports:
       - "8123:8123"
-      - "9000:9000"
+      - "9004:9000"
     environment:
       - CLICKHOUSE_DB=luxury_account
       - CLICKHOUSE_USER=default
