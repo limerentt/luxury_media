@@ -1,22 +1,8 @@
-import type { DefaultSession, DefaultUser } from 'next-auth'
+import type { DefaultSession, Session, User } from 'next-auth'
 import type { JWT, DefaultJWT } from 'next-auth/jwt'
 
-// Extend the built-in session types
-declare module 'next-auth' {
-  interface Session {
-    user: {
-      id: string
-      name?: string | null
-      email?: string | null
-      image?: string | null
-    } & DefaultSession['user']
-    accessToken?: string
-  }
-
-  interface User extends DefaultUser {
-    id: string
-  }
-}
+// Auth types are already extended in src/lib/auth.ts
+// This file only contains additional types
 
 // Extend the built-in JWT types
 declare module 'next-auth/jwt' {
@@ -76,8 +62,11 @@ export interface AuthContextType {
 // User role types (for future use)
 export type UserRole = 'user' | 'admin' | 'premium'
 
-export interface ExtendedUser extends DefaultUser {
+export interface ExtendedUser {
   id: string
+  name?: string | null
+  email?: string | null
+  image?: string | null
   role?: UserRole
   createdAt?: Date
   updatedAt?: Date

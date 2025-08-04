@@ -11,10 +11,20 @@ services:
     environment:
       - NODE_ENV=production
       - NEXTAUTH_URL=http://localhost:3000
-      - NEXTAUTH_SECRET=dev-secret-key
+      - NEXTAUTH_SECRET=Mxn2c/96xqJPW0NlcIof8wdzl1/a342jlWwdhI5cu0k=
+      - AUTH_TRUST_HOST=true
       - API_URL=http://backend:8000
       - PORT=3000
       - HOSTNAME=0.0.0.0
+      # Google OAuth Configuration (from .env.local)
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      # Stripe Configuration (from .env.local)
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
+      - STRIPE_BASIC_PRICE_ID=${STRIPE_BASIC_PRICE_ID:-price_1234567890}
+      - STRIPE_PRO_PRICE_ID=${STRIPE_PRO_PRICE_ID:-price_1234567891}
+      - STRIPE_ENTERPRISE_PRICE_ID=${STRIPE_ENTERPRISE_PRICE_ID:-price_1234567892}
     depends_on:
       - backend
 

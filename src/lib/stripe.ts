@@ -1,11 +1,25 @@
 import Stripe from 'stripe'
 import { loadStripe, Stripe as StripeJS } from '@stripe/stripe-js'
 
-// Server-side Stripe instance
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-06-20',
-  typescript: true,
-})
+// Server-side Stripe instance - lazy initialization
+let stripeInstance: Stripe | null = null
+
+export const getServerStripe = (): Stripe => {
+  if (!stripeInstance) {
+    const apiKey = process.env.STRIPE_SECRET_KEY
+    if (!apiKey) {
+      throw new Error('STRIPE_SECRET_KEY is not set in environment variables')
+    }
+    stripeInstance = new Stripe(apiKey, {
+      apiVersion: '2025-07-30.basil',
+      typescript: true,
+    })
+  }
+  return stripeInstance
+}
+
+// Backward compatibility - use getServerStripe() instead
+export const stripe = getServerStripe
 
 // Client-side Stripe instance
 let stripePromise: Promise<StripeJS | null>
@@ -27,7 +41,7 @@ export const STRIPE_CONFIG = {
   automatic_tax: { enabled: true },
   customer_creation: 'always' as const,
   invoice_creation: { enabled: true },
-} as const
+}
 
 // Subscription price IDs (replace with your actual Stripe Price IDs)
 export const SUBSCRIPTION_PLANS = {
@@ -38,6 +52,7 @@ export const SUBSCRIPTION_PLANS = {
     price: 29,
     currency: 'usd',
     interval: 'month',
+    popular: false,
     features: [
       '100 AI-generated media per month',
       'HD quality exports',
@@ -69,6 +84,7 @@ export const SUBSCRIPTION_PLANS = {
     price: 199,
     currency: 'usd',
     interval: 'month',
+    popular: false,
     features: [
       'Unlimited AI-generated media',
       '8K quality exports',
@@ -126,7 +142,7 @@ export const verifyStripeSignature = (
   secret: string
 ) => {
   try {
-    return stripe.webhooks.constructEvent(payload, signature, secret)
+    return stripe().webhooks.constructEvent(payload, signature, secret)
   } catch (error) {
     throw new StripeError(
       `Webhook signature verification failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -143,7 +159,7 @@ export const createStripeCustomer = async (params: {
   userId: string
 }) => {
   try {
-    const customer = await stripe.customers.create({
+    const customer = await stripe().customers.create({
       email: params.email,
       name: params.name,
       metadata: {
@@ -161,7 +177,7 @@ export const createStripeCustomer = async (params: {
 
 export const getStripeCustomer = async (customerId: string) => {
   try {
-    const customer = await stripe.customers.retrieve(customerId)
+    const customer = await stripe().customers.retrieve(customerId)
     return customer
   } catch (error) {
     throw new StripeError(
@@ -182,7 +198,14 @@ export const createCheckoutSession = async (params: {
 }) => {
   try {
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
-      ...STRIPE_CONFIG,
+      currency: 'usd',
+      payment_method_types: ['card'],
+      mode: 'subscription',
+      billing_address_collection: 'auto',
+      allow_promotion_codes: true,
+      automatic_tax: { enabled: true },
+      customer_creation: 'always',
+      invoice_creation: { enabled: true },
       line_items: [
         {
           price: params.priceId,
@@ -200,7 +223,7 @@ export const createCheckoutSession = async (params: {
       sessionParams.customer_email = params.customerEmail
     }
 
-    const session = await stripe.checkout.sessions.create(sessionParams)
+    const session = await stripe().checkout.sessions.create(sessionParams)
     return session
   } catch (error) {
     throw new StripeError(
@@ -215,7 +238,7 @@ export const createCustomerPortalSession = async (
   returnUrl: string
 ) => {
   try {
-    const session = await stripe.billingPortal.sessions.create({
+    const session = await stripe().billingPortal.sessions.create({
       customer: customerId,
       return_url: returnUrl,
     })

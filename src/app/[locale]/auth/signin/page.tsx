@@ -4,17 +4,19 @@ import { redirect } from 'next/navigation'
 import SignInForm from '@/components/auth/signin-form'
 
 interface Props {
-  params: { locale: string }
-  searchParams: { callbackUrl?: string; error?: string }
+  params: Promise<{ locale: string }>
+  searchParams: Promise<{ callbackUrl?: string; error?: string }>
 }
 
-export default async function SignInPage({ params: { locale }, searchParams }: Props) {
+export default async function SignInPage({ params, searchParams }: Props) {
+  const { locale } = await params
+  const { callbackUrl, error } = await searchParams
   const session = await getServerSession()
   
   // If user is already signed in, redirect to dashboard or callback URL
   if (session?.user) {
-    const callbackUrl = searchParams.callbackUrl || `/${locale}/dashboard`
-    redirect(callbackUrl)
+    const redirectUrl = callbackUrl || `/${locale}/dashboard`
+    redirect(redirectUrl)
   }
 
   return (
@@ -30,8 +32,8 @@ export default async function SignInPage({ params: { locale }, searchParams }: P
         </div>
         
         <SignInForm 
-          callbackUrl={searchParams.callbackUrl}
-          error={searchParams.error}
+          callbackUrl={callbackUrl}
+          error={error}
         />
       </div>
     </div>

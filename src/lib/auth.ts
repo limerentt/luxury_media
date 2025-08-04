@@ -1,6 +1,6 @@
 import NextAuth from "next-auth"
 import Google from "next-auth/providers/google"
-import type { NextAuthConfig } from "next-auth"
+import type { NextAuthConfig, Session } from "next-auth"
 
 // Extend the built-in session types
 declare module "next-auth" {
@@ -11,6 +11,7 @@ declare module "next-auth" {
       email?: string | null
       image?: string | null
     }
+    accessToken?: string
   }
 
   interface User {
@@ -88,7 +89,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth(authConfig)
 export const getServerSession = auth
 
 // Types for client-side usage
-export type AuthSession = Awaited<ReturnType<typeof auth>>
+export type AuthSession = Session | null
 
 // Custom error types
 export class AuthError extends Error {

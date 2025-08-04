@@ -4,7 +4,7 @@ import { XCircle, ArrowLeft, RefreshCw, HelpCircle } from 'lucide-react'
 import { auth } from '@/lib/auth'
 
 interface Props {
-  params: { locale: string }
+  params: Promise<{ locale: string }>
 }
 
 // Simple Button component
@@ -40,7 +40,8 @@ const Button: React.FC<{
   )
 }
 
-export default async function PaymentCanceledPage({ params: { locale } }: Props) {
+export default async function PaymentCanceledPage({ params }: Props) {
+  const { locale } = await params
   const session = await auth()
 
   return (

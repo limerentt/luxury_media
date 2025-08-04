@@ -6,8 +6,8 @@ import { stripe } from '@/lib/stripe'
 import { redirect } from 'next/navigation'
 
 interface Props {
-  params: { locale: string }
-  searchParams: { session_id?: string }
+  params: Promise<{ locale: string }>
+  searchParams: Promise<{ session_id?: string }>
 }
 
 // Simple Button component
@@ -43,7 +43,9 @@ const Button: React.FC<{
   )
 }
 
-export default async function PaymentSuccessPage({ params: { locale }, searchParams }: Props) {
+export default async function PaymentSuccessPage({ params, searchParams }: Props) {
+  const { locale } = await params
+  const { session_id } = await searchParams
   const session = await auth()
   
   // Redirect if not authenticated
@@ -55,9 +57,9 @@ export default async function PaymentSuccessPage({ params: { locale }, searchPar
   let error = null
 
   // Retrieve checkout session if session_id is provided
-  if (searchParams.session_id) {
+  if (session_id) {
     try {
-      checkoutSession = await stripe.checkout.sessions.retrieve(searchParams.session_id)
+      checkoutSession = await stripe().checkout.sessions.retrieve(session_id)
     } catch (err) {
       console.error('Error retrieving checkout session:', err)
       error = 'Failed to retrieve payment details'
