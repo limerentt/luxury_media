@@ -13,6 +13,11 @@ class QueueConsumer(ABC):
     """Abstract base class for queue consumers."""
     
     @abstractmethod
+    async def connect(self) -> None:
+        """Connect to the queue service."""
+        pass
+    
+    @abstractmethod
     async def start_consuming(self, callback: Callable[[Any], None]) -> None:
         """Start consuming messages from the queue."""
         pass
@@ -20,6 +25,11 @@ class QueueConsumer(ABC):
     @abstractmethod
     async def stop_consuming(self) -> None:
         """Stop consuming messages from the queue."""
+        pass
+    
+    @abstractmethod
+    async def health_check(self) -> dict:
+        """Check if the queue connection is healthy."""
         pass
 
 
@@ -29,7 +39,13 @@ class StubQueueConsumer(QueueConsumer):
     def __init__(self, queue_name: str = "media_generation"):
         self.queue_name = queue_name
         self.consuming = False
+        self.connected = False
         self.logger = logger
+    
+    async def connect(self) -> None:
+        """Connect to the queue service (stub implementation)."""
+        self.connected = True
+        self.logger.info(f"Connected to stub queue: {self.queue_name}")
     
     async def start_consuming(self, callback: Callable[[Any], None]) -> None:
         """Start consuming messages (stub implementation)."""
@@ -43,15 +59,17 @@ class StubQueueConsumer(QueueConsumer):
                 break
                 
             # Create a mock message for development
-            mock_message = {
-                "request_id": "dev-request-123",
-                "user_id": "dev-user-456", 
-                "media_type": "image",
-                "prompt": "Development test prompt",
-                "quality": "standard",
-                "retry_count": 0,
-                "max_retries": 3
-            }
+            from app.database.models import MediaGenerationMessage, MediaRequestType, MediaQuality
+            
+            mock_message = MediaGenerationMessage(
+                request_id="dev-request-123",
+                user_id="dev-user-456", 
+                media_type=MediaRequestType.IMAGE,
+                prompt="Development test prompt",
+                quality=MediaQuality.STANDARD,
+                retry_count=0,
+                max_retries=3
+            )
             
             self.logger.info("Processing mock message in development mode")
             try:
@@ -63,6 +81,10 @@ class StubQueueConsumer(QueueConsumer):
         """Stop consuming messages."""
         self.consuming = False
         self.logger.info(f"Stopped consuming from queue: {self.queue_name}")
+    
+    async def health_check(self) -> dict:
+        """Check if the queue connection is healthy (stub implementation)."""
+        return {"status": "healthy" if self.connected else "unhealthy"}
 
 
 class RabbitMQConsumer(QueueConsumer):
@@ -72,7 +94,15 @@ class RabbitMQConsumer(QueueConsumer):
         self.rabbitmq_url = rabbitmq_url
         self.queue_name = queue_name
         self.consuming = False
+        self.connected = False
         self.logger = logger
+    
+    async def connect(self) -> None:
+        """Connect to RabbitMQ."""
+        # TODO: Implement actual RabbitMQ connection
+        # For now, just log that we're connected
+        self.connected = True
+        self.logger.info(f"Connected to RabbitMQ: {self.rabbitmq_url} (queue: {self.queue_name})")
     
     async def start_consuming(self, callback: Callable[[Any], None]) -> None:
         """Start consuming messages from RabbitMQ."""
@@ -88,3 +118,8 @@ class RabbitMQConsumer(QueueConsumer):
         """Stop consuming messages."""
         self.consuming = False
         self.logger.info(f"Stopped consuming from RabbitMQ queue: {self.queue_name}")
+    
+    async def health_check(self) -> dict:
+        """Check if RabbitMQ connection is healthy."""
+        # TODO: Implement actual RabbitMQ health check
+        return {"status": "healthy" if self.connected else "unhealthy"}

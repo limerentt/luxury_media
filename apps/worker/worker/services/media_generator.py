@@ -13,6 +13,10 @@ class MediaGenerator:
     def __init__(self):
         self.logger = logger
     
+    async def health_check(self) -> dict:
+        """Check if media generator is healthy."""
+        return {"status": "healthy"}  # Media generator is always ready for stub implementation
+    
     async def generate_media(
         self, 
         media_type: str, 
